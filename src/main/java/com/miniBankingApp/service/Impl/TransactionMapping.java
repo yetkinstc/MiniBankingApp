@@ -29,7 +29,7 @@ public class TransactionMapping {
         entity.setFrom(from);
         entity.setTo(to);
         entity.setAmount(dto.getAmount());
-        // transactionDate ve status serviste setlenmeli
+
         return entity;
     }
 }

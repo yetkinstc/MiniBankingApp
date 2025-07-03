@@ -13,9 +13,9 @@ import com.miniBankingApp.DTO.UserDTO;
 import com.miniBankingApp.service.ITransactionService;
 import com.miniBankingApp.service.IUserService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
-
 @RestController
 @RequestMapping("/api/transactions")
 @RequiredArgsConstructor
@@ -27,6 +27,7 @@ public class TransactionController {
 
     // Para transferi
     @PostMapping("/transfer")
+    @Operation(summary = "Para transferi yapar")
     public ResponseEntity<TransactionDTO> transferMoney(
             @RequestParam UUID fromAccountId,
             @RequestParam UUID toAccountId,
@@ -39,6 +40,7 @@ public class TransactionController {
     }
 
     // Hesap işlem geçmişi
+    @Operation(summary = "Hesap geçmişini gösterir")
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<TransactionDTO>> getTransactionHistory(
             @PathVariable UUID accountId,

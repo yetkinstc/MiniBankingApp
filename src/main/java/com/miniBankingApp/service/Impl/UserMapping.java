@@ -19,7 +19,7 @@ public class UserMapping {
         return dto;
     }
 
-    // UserDTO'yu User entity'ye çevirir
+
     public User userToEntity(UserDTO dto) {
         if (dto == null) return null;
 

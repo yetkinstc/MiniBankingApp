@@ -18,7 +18,7 @@ public class JwtService {
     private String secret;
 
     private Key getSigningKey() {
-        // secret string'ini Key objesine dönüştürür, böylece güvenlik sorunu olmaz
+        // Hazır Kullandım burayı
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
@@ -26,14 +26,14 @@ public class JwtService {
         return Jwts.builder()
                 .setSubject(auth.getName())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 saat
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)  // burası değişti
+                .setExpiration(new Date(System.currentTimeMillis() + 315360000000L)) // 10 yıl
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)  
                 .compact();
     }
 
     public String extractUsername(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())   // parserBuilder ile
+                .setSigningKey(getSigningKey()) 
                 .build()
                 .parseClaimsJws(token)
                 .getBody()

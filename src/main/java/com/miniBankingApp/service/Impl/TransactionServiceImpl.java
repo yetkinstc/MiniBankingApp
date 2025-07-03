@@ -21,86 +21,83 @@ import com.miniBankingApp.repository.TransactionRepository;
 import com.miniBankingApp.repository.UserRepository;
 import com.miniBankingApp.service.ITransactionService;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 public class TransactionServiceImpl implements ITransactionService {
 
-    private final TransactionRepository transactionRepository;
-    private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
-    private final TransactionMapping transactionMapping; // Mapping DTO <-> Entity
+    private final TransactionRepository transactionRepo;
+    private final AccountRepository accountRepo;
+    private final UserRepository userRepo;
+    private final TransactionMapping mapper;
+
+    public TransactionServiceImpl(TransactionRepository transactionRepo, AccountRepository accountRepo,
+                                  UserRepository userRepo, TransactionMapping mapper) {
+        this.transactionRepo = transactionRepo;
+        this.accountRepo = accountRepo;
+        this.userRepo = userRepo;
+        this.mapper = mapper;
+    }
 
     @Override
     @Transactional
-    public TransactionDTO transferMoney(UUID fromAccountId, UUID toAccountId, BigDecimal amount, UserDTO userDto) {
-        if(amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Transfer miktarı 0'dan büyük olmalı");
+    public TransactionDTO transferMoney(UUID fromAccId, UUID toAccId, BigDecimal amount, UserDTO userDto) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Para miktarı sıfırdan büyük olmalı");
         }
 
-        User user = userRepository.findById(userDto.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepo.findById(userDto.getId()).orElseThrow(() -> new RuntimeException("Kullanıcı yok"));
 
-        Account fromAccount = accountRepository.findById(fromAccountId)
-                .orElseThrow(() -> new NotFoundException("Gönderen hesabı bulunamadı"));
+        Account fromAcc = accountRepo.findById(fromAccId)
+                .orElseThrow(() -> new NotFoundException("Gönderen hesap bulunamadı"));
 
-        Account toAccount = accountRepository.findById(toAccountId)
-                .orElseThrow(() -> new NotFoundException("Alıcı hesabı bulunamadı"));
+        Account toAcc = accountRepo.findById(toAccId)
+                .orElseThrow(() -> new NotFoundException("Alıcı hesap bulunamadı"));
 
-        // Hesap sahibini kontrol et
-        if(!fromAccount.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bu hesaba erişim yetkiniz yok");
+        if (!fromAcc.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Bu hesap senin değil");
         }
 
-        // Bakiye kontrolü
-        if(fromAccount.getBalance().compareTo(amount) < 0) {
-        	Transaction failedTx = new Transaction();
-            failedTx.setFrom(fromAccount);
-            failedTx.setTo(toAccount);
-            failedTx.setAmount(amount);
-            failedTx.setTransactionDate(LocalDateTime.now());
-            failedTx.setStatus(TransactionStatus.FAILED);
-            transactionRepository.save(failedTx);
+        if (fromAcc.getBalance().compareTo(amount) < 0) {
+            Transaction failTx = new Transaction();
+            failTx.setFrom(fromAcc);
+            failTx.setTo(toAcc);
+            failTx.setAmount(amount);
+            failTx.setTransactionDate(LocalDateTime.now());
+            failTx.setStatus(TransactionStatus.FAILED);
+            transactionRepo.save(failTx);
 
-            throw new RuntimeException("Yetersiz bakiye");
+            throw new RuntimeException("Bakiyen yetmiyor");
         }
 
-        // İşlem başlatılıyor
-        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-        toAccount.setBalance(toAccount.getBalance().add(amount));
+        fromAcc.setBalance(fromAcc.getBalance().subtract(amount));
+        toAcc.setBalance(toAcc.getBalance().add(amount));
 
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
+        accountRepo.save(fromAcc);
+        accountRepo.save(toAcc);
 
-        Transaction transaction = new Transaction();
-        transaction.setFrom(fromAccount);
-        transaction.setTo(toAccount);
-        transaction.setAmount(amount);
-        transaction.setTransactionDate(LocalDateTime.now());
-        transaction.setStatus(TransactionStatus.SUCCESS);
+        Transaction tx = new Transaction();
+        tx.setFrom(fromAcc);
+        tx.setTo(toAcc);
+        tx.setAmount(amount);
+        tx.setTransactionDate(LocalDateTime.now());
+        tx.setStatus(TransactionStatus.SUCCESS);
 
-        Transaction savedTx = transactionRepository.save(transaction);
+        Transaction savedTx = transactionRepo.save(tx);
 
-        return transactionMapping.toDto(savedTx);
+        return mapper.toDto(savedTx);
     }
 
     @Override
     public List<TransactionDTO> getTransactionHistory(UUID accountId, UserDTO userDto) {
-        User user = userRepository.findById(userDto.getId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepo.findById(userDto.getId()).orElseThrow(() -> new RuntimeException("Kullanıcı yok"));
 
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new NotFoundException("Hesap bulunamadı"));
+        Account acc = accountRepo.findById(accountId).orElseThrow(() -> new NotFoundException("Hesap yok"));
 
-        if(!account.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Bu hesaba erişim yetkiniz yok");
+        if (!acc.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Bu hesap sana ait değil");
         }
 
-        List<Transaction> transactions = transactionRepository.findByFromOrTo(account, account);
+        List<Transaction> txList = transactionRepo.findByFromOrTo(acc, acc);
 
-        return transactions.stream()
-                .map(transactionMapping::toDto)
-                .collect(Collectors.toList());
+        return txList.stream().map(mapper::toDto).collect(Collectors.toList());
     }
 }
